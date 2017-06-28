@@ -20,6 +20,8 @@ from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
+t0 = time.clock()
+
 # Define cosmology
 cosmo = FlatLambdaCDM(H0=70, Om0=0.31)
 
@@ -101,5 +103,9 @@ outfil_samp = 'bootsamp_'+outsuffix+'.npy'
 
 np.save(outfil_cov, Covar)
 np.save(outfil_samp, XCorrSamples)
+
+t1 = time.clock()
+
+print('Total runtime (s) = {}'.format(t1-t0))
 
 exit()
