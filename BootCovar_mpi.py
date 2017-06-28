@@ -21,9 +21,6 @@ from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-
 t0 = time.clock()
 
 # Define cosmology
