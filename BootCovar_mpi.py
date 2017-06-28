@@ -30,7 +30,7 @@ t0 = time.clock()
 cosmo = FlatLambdaCDM(H0=70, Om0=0.31)
 
 # Open config file and parse parameters
-input_fil = str(sys.argv[1])
+input_fil = str(sys.argv[1]) 
 
 f=open(input_fil, 'r')
 lines = f.readlines()
