@@ -28,9 +28,10 @@ insp_fil =  datadir+'cl2017_valueadded_20170426_widez.txt'
 ;cat = mrdfits(cat_fil, 1, /silent)
 
 readcol, insp_fil, specfil, catnum, mag, zconf, zsp, ra, dec, $
-         snrlya1, snrlya2, f='a, l, d, d, d,d ,d , d,d', /silent
+         snrlya1, snrlya2, snrlya3,  f='a, l, d, d, d,d ,d,d,d,d', /silent
 
-qualcut = where((snrlya1 GE 1.0 OR snrlya2 GE 1.0) AND zconf GE 3., $
+qualcut = where((snrlya1 GE 1.0 OR snrlya2 GE 1.0 OR snrlya3 GE 1.0) $
+                AND zconf GE 3., $
                 nsel, complement=failcut) 
 
 remove, failcut, specfil, catnum, zsp, zconf, snrlya1,snrlya2, ra, dec, mag
@@ -245,7 +246,7 @@ print, n_elements(x_out), ' pixels'
 pixel_arr = double([[x_out], [y_out], [z_out], [noise_out], [delta_out]])
 ;pixel_arr = transpose(pixel_arr)
 
-openw, 11, 'pixel_radecz.bin'
+openw, 11, 'pixel_radecz_cl2017_v1.bin'
 writeu, 11, long(n_elements(x_out))
 writeu, 11, pixel_arr
 close, 11
