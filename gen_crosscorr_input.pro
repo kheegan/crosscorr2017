@@ -246,7 +246,7 @@ print, n_elements(x_out), ' pixels'
 pixel_arr = double([[x_out], [y_out], [z_out], [noise_out], [delta_out]])
 ;pixel_arr = transpose(pixel_arr)
 
-openw, 11, 'pixel_radecz_cl2017_v1.bin'
+openw, 11, 'pixel_radecz_cl2017_v3.bin'
 writeu, 11, long(n_elements(x_out))
 writeu, 11, pixel_arr
 close, 11
