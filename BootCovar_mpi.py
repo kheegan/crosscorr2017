@@ -52,12 +52,12 @@ if rank==0:
     npix = LyaPix.npix
 
     # Read in galaxy positions
-    gal_table = ascii.read(galfil)
+    gal_table = ascii.read(galfil,format='ipac')
     gal = gal_table[gal_table['source'] == cat_str]
     print('Read in {0:d} galaxies'.format(len(gal)))
 
     # Generate 3D sky positions for galaxies
-    GalCoords = SkyCoord(ra=gal['ra']*u.degree,dec=gal['dec']*u.degree,
+    GalCoords = SkyCoord(ra=gal['ra'],dec=gal['dec'],
                          distance=cosmo.comoving_distance(gal['zspec']))
     ngal = len(GalCoords)
 
