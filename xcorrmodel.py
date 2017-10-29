@@ -1,7 +1,19 @@
 import numpy as np
 from astropy.io import ascii
+import re
 
-def rebin_model_to_xcorr(delta_z, SigModel, PiModel, SigEdges, PiEdges):
+######## A couple of functions to replace multiple strings #########
+def multiple_replacer(*key_values):
+    replace_dict = dict(key_values)
+    replacement_function = lambda match: replace_dict[match.group(0)]
+    pattern = re.compile("|".join([re.escape(k) for k, v in key_values]), re.M)
+    return lambda string: pattern.sub(replacement_function, string)
+
+def multiple_replace(string, *key_values):
+    return multiple_replacer(*key_values)(string)
+###################################################################
+
+def rebin_model_to_xcorr(delta_z, SigModel, PiModel, SigEdges, PiEdges,verbose=False):
     """Returns an array of subscripts to map model grid to observed grid, as a function of delta_z.
     
     Inputs: 
@@ -28,6 +40,8 @@ def rebin_model_to_xcorr(delta_z, SigModel, PiModel, SigEdges, PiEdges):
             grabpix =  np.where( (SigModel >= s1) & (SigModel < s2) & 
                                 (PiModel+delta_z >= p1) & (PiModel+delta_z < p2) )
             rebinned_indices[ctr] = grabpix
+            if verbose: 
+                print(ctr, len(grabpix[0]))
             ctr += 1
 
     return rebinned_indices
@@ -81,11 +95,9 @@ def xcorr_model_binned(XCorrModelFil, SigEdges, PiEdges, delta_z = 0., LinearMod
     
     mod_raw = np.sort(mod_raw, order=['rt', 'rp'])
     
-    if rebin_indices is None:
-        rebinned_ind = rebin_model_to_xcorr(delta_z, mod_raw['rt'], mod_raw['rp'], 
+
+    rebinned_ind = rebin_model_to_xcorr(delta_z, mod_raw['rt'], mod_raw['rp'], 
                                             SigEdges, PiEdges)
-    else:
-        rebinned_ind = rebin_indices
     
     XCorr_model_flat = np.empty(nbins_out)
     
@@ -134,6 +146,13 @@ class XCorrModel:
         self.rp = mod_refl['rp']
         self.xi_lin  = mod_refl['xi_lin']
         self.xi_conv = mod_refl['xi_conv']
+        # Store also the model filename, and parse the parameter values from it
+        # This is for v0 models, and might need to change for future versions
+        self.modelfil = ModFil
+        self.bias  = float(ModFil.split("_")[-2].replace("b",""))
+
+        sig_repl = (u"s", u""), (u".txt", u"")
+        self.sig_z = float(multiple_replace(ModFil.split("_")[-1], *sig_repl))
 
     def rebin_flat(self, indices, LinearModel = False):
         """ Rebin the model into another grid. Input is a list of indices referencing
@@ -168,3 +187,28 @@ class XCorrModel:
         model2d = np.reshape(flatmodel, [len(PiEdges)-1, len(SigEdges)-1])
 
         return np.transpose(model2d)
+
+    def rebin_from_dz(self, SigEdges, PiEdges, delta_z=0., 
+                       LinearModel=False):
+        """ Same functionality as the xcorr_model_binned method, but operates on 
+        the object rather than reading from file."""
+        print("This method hasn't been tested at all!!")
+        nbins_Pi = len(PiEdges)-1
+        nbins_Sig = len(SigEdges)-1
+        nbins_out = ( nbins_Pi * nbins_Sig)
+
+        rebinned_ind = rebin_model_to_xcorr(delta_z, self.rt, self.rp, 
+                                            SigEdges, PiEdges)
+        XCorr_model_flat = np.empty(nbins_out)
+    
+        if LinearModel:
+            xi_flat = self.xi_lin 
+        else:
+            xi_flat = self.xi_conv
+
+        for i in range(nbins_out):
+            ind_tmp = rebinned_ind[i][0]
+            XCorr_model_flat[i] = np.mean(xi_flat[ind_tmp])
+        
+            XCorr_model = np.reshape(XCorr_model_flat, [nbins_Pi,nbins_Sig])
+            return np.transpose(XCorr_model)
