@@ -61,6 +61,8 @@ z_out = []
 delta_out = []
 noise_out = []
 
+openw, 19, 'list_xcorr_input_2017_v3.txt'
+
 ctr = 0L
 
 for ii=0, nsel-1 do begin
@@ -230,10 +232,16 @@ for ii=0, nsel-1 do begin
    y_out = [y_out, replicate(dec_tmp, npix_tmp)]
    z_out = [z_out, zvec]
 
+   printf, 19, catnum_tmp, ztmp, gmag_tmp, ra_tmp, dec_tmp, $
+           ctr, ctr+npix_tmp-1, $
+           format='(I05, 2x, f7.4, 2x, f5.2,3x, f7.3,' + $
+           '2x, f8.5, 2(2x,i6))'
+
    ctr += npix_tmp
 
 endfor
 
+close, 19
 
 ;zerow = where(noise_out EQ 0.)
 ;remove, zerow, x_out, y_out, z_out, noise_out, delta_out
