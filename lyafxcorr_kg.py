@@ -44,11 +44,12 @@ class lyapix:
     def var_forest(z_in):
         """ Return intrinsic Lya-forest variance as function of redshift"""
         return 0.065 * ( (1.+z_in)/3.25 )**3.8
+
     def resample(self):
         """
         Randomly resample (with replacement) all the forest pixels of 
         the instance. This is done in-place, so should only operate on 
-        copies of the true pixel distribution.
+        *copies* of the true pixel distribution.
 
         Also creates a new attribute called ind_vec, which is the 
         sequence of indices used to create the current resample.
@@ -74,6 +75,97 @@ class lyapix:
 
         self.ind_vec = ind_vec
         return self
+
+    def resample_skewer(self, SkewerRec=None):
+        """
+        Randomly resample (with replacement) the forest sightlines of 
+        the instance. This is done in-place, so should only operate on 
+        *copies* of the true pixel distribution.
+
+        Also creates a new attribute called ind_vec, which is the 
+        sequence of indices used to create the current resample.
+
+        SkewerRec is a record array listing the sightline pixels that can be 
+        optionally given as input created during each call. Otherwise, gen_SkewerRec
+        will be run.
+        """
+        if SkewerRec == None:
+            SkewerRec = self.gen_SkewerRec()
+
+        SkewerPos, SkewerMask = SkewerRec
+
+        # Convert SkewerMask into an array
+        SkewerMask = np.asarray(SkewerMask)
+        
+        n_skewer = len(SkewerPos)
+        
+        # Resample the skewers with replacement. This returns skewer indices
+        rand_skewer = np.random.choice(n_skewer, n_skewer, replace=True)
+
+        # Convert the skewer masks into an array
+        SkewerMask_rand = SkewerMask[rand_skewer,:]
+
+        # Collect the indices into a single array
+        ind_vec = []
+
+        for skewer in SkewerMask_rand:
+            if len(ind_vec)==0:
+                ind_vec = np.where(skewer)
+            else:
+                ind_vec = np.append(ind_vec,np.where(skewer))
+
+        dectmp = self.dec
+        ztmp = self.z
+        sigtmp = self.sig
+        deltatmp = self.delta
+        wtmp = self.w
+        comdisttmp = self.comdist
+        coordtmp = self.coord
+        
+        self.ra = self.ra[ind_vec]
+        self.dec = dectmp[ind_vec]
+        self.z   = ztmp[ind_vec]
+        self.sig = sigtmp[ind_vec]
+        self.delta = deltatmp[ind_vec]
+        self.w     = wtmp[ind_vec]
+        self.comdist = comdisttmp[ind_vec]
+        self.coord   = coordtmp[ind_vec]
+
+        self.ind_vec = ind_vec
+        return self
+
+    def gen_SkewerRec(self):
+        """ Create a tuple with (1) array of the individual skewers' [RA/Dec]
+        and (2) pixel indices referencing the overall class instance
+        """
+
+        # Create tuples of [ra,dec] then find unique row
+        radec_all = np.transpose([self.ra, self.dec])
+        pos_arr = [tuple(radectmp) for radectmp in radec_all]
+        radec_uniq_arr = np.unique(pos_arr,axis=0)
+
+        radec_uniq = [tuple(postmp) for postmp in radec_uniq_arr]
+
+        n_skewer = len(radec_uniq)
+
+        dtype = [('RA','f8'), ('Dec', 'f8')]
+
+        skewer_pos = np.empty(n_skewer, dtype=dtype)
+        
+        skewer_mask = [None] * n_skewer
+
+        ctr = 0
+        for ra_tmp, dec_tmp in radec_uniq:
+            skewer_pos['RA'][ctr] = ra_tmp
+            skewer_pos['Dec'][ctr] = dec_tmp
+            skewer_mask[ctr] = np.all(np.column_stack( 
+                [np.isclose(ra_tmp, self.ra,rtol=1.e-5),
+                 np.isclose(dec_tmp, self.dec, rtol=1.e-5)]), axis=1)
+            ctr +=1
+
+        SkewerRec = (skewer_pos, skewer_mask)
+
+        return SkewerRec
         
 
 def countpix(GalCoord, PixCoord,  SigEdges, PiEdges,
