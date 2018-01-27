@@ -61,9 +61,12 @@ z_out = []
 delta_out = []
 noise_out = []
 
-openw, 19, 'list_xcorr_input_2017_v3.txt'
+openw, 19, 'list_xcorr_input_2017_v4.txt'
 
 ctr = 0L
+
+;; Track 'corrected' continua that otherwise go negative
+cont_neg = []
 
 for ii=0, nsel-1 do begin
    
@@ -167,6 +170,14 @@ for ii=0, nsel-1 do begin
             ;; Do mean-flux regulation
             cont_tmp = mfreg(wave, flux, cont_tmp, ivar=ivar, $
                              lyaf_range=[1040, 1185.], zqso=ztmp, wavemin=3800.)
+            if where(cont_tmp[forestrange] LE 0) NE [-1]  then begin
+               cont_old = cont_tmp
+               void = cnr_forest(wave, flux, sig, zem=ztmp, cont_out=cont_tmp)
+               cont_tmp[where(wave/(1.+ztmp) LT 1200)] *= 0.95
+               cont_neg = [cont_neg, catnum_tmp]
+                                ;stop
+            endif
+
          endif else begin
             
             ;; CNR_FOREST is for estimating SNR but also estimates a
@@ -254,7 +265,7 @@ print, n_elements(x_out), ' pixels'
 pixel_arr = double([[x_out], [y_out], [z_out], [noise_out], [delta_out]])
 ;pixel_arr = transpose(pixel_arr)
 
-openw, 11, 'pixel_radecz_cl2017_v3.bin'
+openw, 11, 'pixel_radecz_cl2017_v4.bin'
 writeu, 11, long(n_elements(x_out))
 writeu, 11, pixel_arr
 close, 11
