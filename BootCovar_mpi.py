@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import copy
 import lyafxcorr_kg as xcorr
-import time
+import time 
 from mpi4py import MPI
 from astropy.cosmology import FlatLambdaCDM
 from astropy.io import fits
@@ -51,6 +51,9 @@ if rank==0:
     print("Read in {0:d} Ly-a forest pixels".format(LyaPix.npix))
     npix = LyaPix.npix
 
+    # Generate record of individual skewers
+    SkewerRec = LyaPix.gen_SkewerRec()
+
     # Read in galaxy positions
     gal_table = ascii.read(galfil,format='ipac')
     gal = gal_table[gal_table['source'] == cat_str]
@@ -85,6 +88,7 @@ if rank==0:
     XCorrSamples_flat = np.empty(nsamp*(len(SigEdges)-1)*(len(PiEdges)-1))
 else:
     LyaPix = None
+    SkewerRec = None
     GalCoords = None
     ngal = None
     nsamp_node = None
@@ -96,6 +100,7 @@ else:
 
 cosmo  = comm.bcast(cosmo, root=0)
 LyaPix = comm.bcast(LyaPix,root=0)
+SkewerRec = comm.bcast(SkewerRec, root=0)
 GalCoords = comm.bcast(GalCoords,root=0)
 ngal = comm.bcast(ngal,root=0)
 nsamp_node = comm.bcast(nsamp_node, root=0)
@@ -122,7 +127,7 @@ for ii in range(0,nsamp_node):
         print("Iteration {} on rank 0".format(ii))
     # Make a copy of the pixels and resample
     LyaPixTmp = copy.deepcopy(LyaPix)
-    LyaPixTmp = LyaPixTmp.resample()
+    LyaPixTmp = LyaPixTmp.resample_skewer(SkewerRec=SkewerRec)
     # Resample galaxy positions
     GalCoordTmp = GalCoords[np.random.choice(ngal,ngal,replace=True)]
     XCorrTmp, _ = xcorr.xcorr_gal_lya(GalCoordTmp, LyaPixTmp,SigEdges, PiEdges,
