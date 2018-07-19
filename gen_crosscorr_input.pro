@@ -61,7 +61,7 @@ z_out = []
 delta_out = []
 noise_out = []
 
-openw, 19, 'list_xcorr_input_2017_v4.txt'
+openw, 19, 'list_xcorr_input_2017_v4.1.txt'
 
 ctr = 0L
 
@@ -189,7 +189,7 @@ for ii=0, nsel-1 do begin
          wavemintmp = 1040.*(1.+ztmp) 
          wavemaxtmp = 1185.*(1.+ztmp) 
       endelse
-   endelse 
+   endelse  
       
 ;   xran=(1.+ztmp)*[1030., 1350.]
 ;   yvals = flux[sort(flux)]
@@ -208,7 +208,10 @@ for ii=0, nsel-1 do begin
 ;   dummy = ''
 ;   read, dummy
 
-   forestcut = where(wave GE wavemintmp AND wave LE wavemaxtmp, npix_tmp)
+   wavemincut = wavemintmp > waveminlya
+   wavemaxcut = wavemaxtmp < wavemaxlya
+
+   forestcut = where(wave GE wavemincut AND wave LE wavemaxcut, npix_tmp)
 
    zvec = wave[forestcut]/ 1215.67 - 1.
    ;losvec = (zvec - zmin) * dcomdist_dz
@@ -265,7 +268,7 @@ print, n_elements(x_out), ' pixels'
 pixel_arr = double([[x_out], [y_out], [z_out], [noise_out], [delta_out]])
 ;pixel_arr = transpose(pixel_arr)
 
-openw, 11, 'pixel_radecz_cl2017_v4.bin'
+openw, 11, 'pixel_radecz_cl2017_v4.1.bin'
 writeu, 11, long(n_elements(x_out))
 writeu, 11, pixel_arr
 close, 11
