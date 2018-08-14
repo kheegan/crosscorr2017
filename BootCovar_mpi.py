@@ -6,6 +6,9 @@ Takes an argument that points to an ASCII config file.
 
 Run as:
 > python_mpi BootCovar_mpi.py input.cfg
+
+Now modified to divide out the locally-measured F_mean(z), reading
+from a hardwired file
 """
 
 import sys
@@ -24,6 +27,9 @@ from astropy.coordinates import SkyCoord
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
+
+def taueff_evo(z):
+    return 0.001845 * (1.+z)**3.924
 
 if rank==0:
     t0 = time.clock()
@@ -50,6 +56,15 @@ if rank==0:
     LyaPix = xcorr.lyapix(pixfil,cosmo=cosmo)
     print("Read in {0:d} Ly-a forest pixels".format(LyaPix.npix))
     npix = LyaPix.npix
+
+    # Carry out mean-flux correction
+    fmean_str = ascii.read('fmean_measured_v4.dat')
+    zmid = fmean_str['zmid']
+    F_mean = fmean_str['F_mean']
+
+    Fcorr = np.interp(LyaPix.z, zmid, F_mean) / np.exp(-taueff_evo(LyaPix.z))
+    LyaPix.delta = ((1.+LyaPix.delta)/np.exp(-taueff_evo(LyaPix.z)))-1.
+
 
     # Generate record of individual skewers
     SkewerRec = LyaPix.gen_SkewerRec()
