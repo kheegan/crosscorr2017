@@ -268,13 +268,13 @@ def xcorr_gal_lya(GalCoord, LyaPix, SigEdges, PiEdges, cosmo=cosmo_default,verbo
     itmp = 0
     CoordTmp = GalCoord
     
-    t0= time.clock()
+    t0= time.time()
     NumerArr = weight_stack(CoordTmp[itmp], LyaPix.coord, LyaPix.delta*LyaPix.w, SigEdges, 
                                   PiEdges, cosmo=cosmo)
     DenomArr = weight_stack(CoordTmp[itmp], LyaPix.coord, LyaPix.w, SigEdges, 
                                   PiEdges, cosmo=cosmo)
     if verbose == 1:
-        print('2D histogram evaluation took %f seconds for first galaxy' % (time.clock()-t0))
+        print('2D histogram evaluation took %f seconds for first galaxy' % (time.time()-t0))
 
     NoNearPix = []
     for itmp in range(1,len(GalCoord)):
@@ -290,7 +290,7 @@ def xcorr_gal_lya(GalCoord, LyaPix, SigEdges, PiEdges, cosmo=cosmo_default,verbo
         
     if verbose == 1:
         print("Finished evaluating cross-correlations. This took %f seconds"
-              % (time.clock()-t0) )
+              % (time.time()-t0) )
         print("%i galaxies had no cross-correlations within these bins." % len(NoNearPix))
 
     CrossCorr = NumerArr * (DenomArr != 0)/ (DenomArr + (DenomArr == 0))
