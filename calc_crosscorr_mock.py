@@ -79,7 +79,7 @@ for ivol in np.arange(istart,iend+1):
             #      '%i VUDS galaxies, %i CLAMATO galaxies' % 
             #      (len(gal_3d), len(gal_zD), len(gal_mosdef), len(gal_vuds),len(gal_clamato)) )
 
-            print("Calculating cross-correlation between galaxy catalog "+galsuffix+" and absorption catalog "+abssuffix)
+#            print("Calculating cross-correlation between galaxy catalog "+galsuffix+" and absorption catalog "+abssuffix)
 
             # Convert to 3D Sky positions
             Coord_3d     = SkyCoord(ra=gal_3d['ra']  , dec=gal_3d['dec']  ,
