@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.io import ascii
 import re
+from scipy import interpolate
 
 ######## A couple of functions to replace multiple strings #########
 def multiple_replacer(*key_values):
@@ -142,6 +143,7 @@ class XCorrModel:
     
         mod_refl = np.sort(mod_refl, order=['rt', 'rp'])
 
+        self.nbin_raw = len(xi_conv)*2
         self.rt = mod_refl['rt']
         self.rp = mod_refl['rp']
         self.xi_lin  = mod_refl['xi_lin']
@@ -212,3 +214,119 @@ class XCorrModel:
         
             XCorr_model = np.reshape(XCorr_model_flat, [nbins_Pi,nbins_Sig])
             return np.transpose(XCorr_model)
+
+# UNDER CONSTRUCTION
+class ModelFunc:
+    def __init__(self, ModArr):
+        """
+        Class for calling cross-correlation models as a function of input parameter. 
+        This currently works for models that define a uniform grid in b and sigz, in 
+        preparation for interpolation.
+
+        Unlike XCorrModel, we do NOT store the reflected xi both towards and away from LOS
+        
+        This is initialized by passing a list of XCorrModels. 
+        """
+        self.nmodel = np.size(ModArr)
+        
+        bias_arr = np.empty(self.nmodel)
+        sigz_arr = np.empty(self.nmodel)
+
+        nbin_raw = ModArr[1].nbin_raw
+        self.nbin = int(nbin_raw/2)
+        rt2 = ModArr[1].rt
+        rp2 = ModArr[1].rp
+
+        mask_neg = rp2 >= 0.
+
+        self.rt = rt2[mask_neg]
+        self.rp = rp2[mask_neg]
+
+        # First loop through model arr to get all the parameters
+        ctr = 0
+        for mod in ModArr:
+            bias_arr[ctr] = mod.bias
+            sigz_arr[ctr] = mod.sig_z
+            ctr += 1
+
+        self.bias_arr = bias_arr
+        self.sigz_arr = sigz_arr
+        #self.xi_conv = xi_conv_arr
+
+        # Create arrays of unique parameter values
+        self.bias = np.unique(bias_arr)
+        self.sigz = np.unique(sigz_arr)
+        self.nbias = len(self.bias)
+        self.nsigz = len(self.sigz)
+
+        # Define the dictionary to map between parameter values and array indices.
+        # We round the key values to ensure a stable hash
+        bias_dic = dict(zip(np.round(self.bias,1), np.arange(self.nbias)))
+        sigz_dic = dict(zip(np.round(self.sigz,5), np.arange(self.nsigz)))
+
+        # Initialize array for the xi, with two additional dimensions for the parameters. 
+        # Fill with NaNs so that we can check at the end that every entry is filled
+        xi_conv_2d = np.empty((len(self.bias), len(self.sigz), self.nbin))
+        xi_conv_2d[:] = np.nan
+
+        for mod in ModArr:
+            i_b = bias_dic[np.round(mod.bias,1)]
+            i_s = sigz_dic[np.round(mod.sig_z,5)]
+            xi_conv_2d[i_b,i_s,:] = mod.xi_conv[mask_neg]
+
+        if np.isnan(xi_conv_2d).any():
+            print("Error: Parameter space not uniformly sampled. Need a model for every (b, sig_z)")
+            
+        self.xi_conv = xi_conv_2d
+        
+    def XCorrOut(self,bias_in, sigz_in):
+        """ Return raw 2D cross-correlation model given bias and sigma_z."""
+        # Check that the desired bias and sig_z values are part of the current object's parameter grid
+        bias_dic = dict(zip(np.round(self.bias,1), np.arange(self.nbias)))
+        sigz_dic = dict(zip(np.round(self.sigz,5), np.arange(self.nsigz)))
+
+        if not np.round(bias_in,1) in bias_dic.keys():
+            print("Error: input bias value not part of parameter grid")
+            print("Available bias values:")
+            print(self.bias)
+            return
+
+        if not np.round(sigz_in,5) in sigz_dic.keys():
+            print("Error: input sig_z value not part of parameter grid")
+            print("Available sig_z values:")
+            print(self.bias)
+            return
+
+        i_b = bias_dic[np.round(bias_in,1)]
+        i_s = sigz_dic[np.round(sigz_in,5)]
+
+        return np.squeeze(self.xi_conv[i_b,i_s,:])
+
+    def XCorrInterpRaw(self, bias_in, sigz_in):
+        """ Interpolate the xi from the ModelFunc object, given an input bias and sig_z
+        """
+        if bias_in < np.min(self.bias) or bias_in > np.max(self.bias):
+            print("Warning: input bias value outside parameter space. We are extrapolating...")
+
+        if sigz_in < np.min(self.sigz) or sigz_in > np.max(self.sigz):
+            print("Warning: input sigz value outside parameter space. We are extrapolating...")
+
+        xi_out = np.empty(self.nbin)
+
+        for ibin in np.arange(self.nbin):
+            #if (ibin % 1000) == 0:
+            #    print(ibin)
+            xi_arr_tmp = np.squeeze(self.xi_conv[:,:,ibin])
+            xi_out[ibin] = interpolate.interpn( (self.bias, self.sigz), xi_arr_tmp, [bias_in, sigz_in])
+
+        return xi_out
+
+    def XCorrInterpBin(self, SigEdges, PiEdges, bias=bias_in, sigz=sigz_in, dz=dz_in) 
+            # 1. generate reflected LOS axis
+            rt2 = np.append(self.rt, self.rt)
+            rp2 = np.append(self.rp, self.rp * -1.)
+            
+            xi_tmp = self.XCorrInterpRaw(bias_in, sigz_in)
+            xi2 = np.append(xi_tmp, xi_tmp)
+
+            bin_ind = rebin_model_to_xcorr(dz_in, rt2, rp2, SigEdges, PiEdges, verbose=False)
