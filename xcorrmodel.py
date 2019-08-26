@@ -223,7 +223,8 @@ class ModelFunc:
         This currently works for models that define a uniform grid in b and sigz, in 
         preparation for interpolation.
 
-        Unlike XCorrModel, we do NOT store the reflected xi both towards and away from LOS
+        Unlike XCorrModel, we do NOT store the reflected xi both towards and away from LOS. 
+        This is to save memory, as we will need to store a large grid of models in memory.
         
         This is initialized by passing a list of XCorrModels. 
         """
@@ -280,7 +281,7 @@ class ModelFunc:
         self.xi_conv = xi_conv_2d
         
     def XCorrOut(self,bias_in, sigz_in):
-        """ Return raw 2D cross-correlation model given bias and sigma_z."""
+        """ Return raw 2D cross-correlation model given bias and sigma_z that is exactly part of the model grid."""
         # Check that the desired bias and sig_z values are part of the current object's parameter grid
         bias_dic = dict(zip(np.round(self.bias,1), np.arange(self.nbias)))
         sigz_dic = dict(zip(np.round(self.sigz,5), np.arange(self.nsigz)))
@@ -317,11 +318,11 @@ class ModelFunc:
             #if (ibin % 1000) == 0:
             #    print(ibin)
             xi_arr_tmp = np.squeeze(self.xi_conv[:,:,ibin])
-            xi_out[ibin] = interpolate.interpn( (self.bias, self.sigz), xi_arr_tmp, [bias_in, sigz_in])
-
+            xi_out[ibin] = interpolate.interpn( (self.bias, self.sigz), xi_arr_tmp, [bias_in, sigz_in],bounds_error=False,fill_value=None)
+            
         return xi_out
 
-    def XCorrInterpBin(self, SigEdges, PiEdges, bias=bias_in, sigz=sigz_in, dz=dz_in) 
+    def XCorrInterpBin(self,  bias_in, sigz_in, dz_in, SigEdges, PiEdges): 
             # 1. generate reflected LOS axis
             rt2 = np.append(self.rt, self.rt)
             rp2 = np.append(self.rp, self.rp * -1.)
@@ -330,3 +331,17 @@ class ModelFunc:
             xi2 = np.append(xi_tmp, xi_tmp)
 
             bin_ind = rebin_model_to_xcorr(dz_in, rt2, rp2, SigEdges, PiEdges, verbose=False)
+
+            nbins_Pi = len(PiEdges)-1
+            nbins_Sig = len(SigEdges)-1
+            nbins_out = ( nbins_Pi * nbins_Sig)
+
+            XCorrBinned_flat = np.empty(nbins_out)
+
+            for i in range(nbins_out):
+                ind_tmp = bin_ind[i][0]
+                XCorrBinned_flat[i] = np.mean(xi2[ind_tmp])
+
+            XCorrBinned = np.reshape(XCorrBinned_flat, [nbins_Pi, nbins_Sig])
+            return np.transpose(XCorrBinned)
+
